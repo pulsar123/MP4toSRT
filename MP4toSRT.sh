@@ -6,12 +6,14 @@
 # The merged SRT file can be loaded into Kdenlive video editor, along with all the video clips, 
 # for joint editing/exporting.
 
-# Program ffprobe should be on your $PATH . E.g. it comes with kdenlive, and under Windows you can
+# Program ffprobe should be on your $PATH . E.g. it comes with kdenlive, and under Windows (cygwin) you can
 # add the following to your .bashrc file:
-
 #  export PATH=/cygdrive/c/Program\ Files/kdenlive/bin:$PATH
 
-# The script is also using two standard Linux commands (present in cygwin) date and awk.
+# Under Windows Subsystem for Linux, it will look like:
+#  export PATH=/mnt/c/Program\ Files/kdenlive/bin:$PATH
+
+# The script is also using two standard Linux commands (present in cygwin and WSL): date and awk.
 
 # Frame rate:
 FPS=29.97
@@ -30,8 +32,19 @@ if test $# -eq 0
   exit
   fi
 
+# Checking if ffprobe is on the $PATH (both Windows and Linux spelling):
+if which ffprobe.exe &>/dev/null
+  then
+  FFPROBE=ffprobe.exe
+  elif which ffprobe &>/dev/null
+  then
+  FFPROBE=ffprobe
+  else
+  echo "ffprobe command is not on your PATH; exiting..."
+  exit 1
+  fi
 
-\rm $OUT
+\rm $OUT  &>/dev/null
 
 i=0  # Subtitle counter
 t1=0  # Cumulative time in seconds, 0 at the very start
@@ -84,17 +97,22 @@ function write_subtitle
 
 
 for file in $*
-  do  
+  do
   echo "Processing $file"
+  if ! $FFPROBE $file &>/dev/null
+    then
+    echo "File $file does not seem to be a video file; exiting..."
+    exit 1
+    fi
   dt=0
   # Number of frames in the clip (reading metadata value with ffprobe):
-  N_FRAMES=$(ffprobe -loglevel 0  -show_streams -select_streams v:0 $file | grep nb_frames | cut -d= -f2)
+  N_FRAMES=$($FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep nb_frames | cut -d= -f2)
   # If the metadata number of frames is missing, you can use this method (much slower):
-  #  N_FRAMES=$(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $file| grep nb_frames | cut -d= -f2)
+  #  N_FRAMES=$($FFPROBE -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $file| grep nb_frames | cut -d= -f2)
   # Or you can use MediaInfo CLI program:
   #  N_FRAMES=$(/cygdrive/c/Program\ Files/MediaInfo_CLI/MediaInfo.exe --Output="Video;%FrameCount%" $file)
-  # Starting date/time of the clip (in local time; readingh from MP4 metadata):
-  DATE=$(date -d $( ffprobe -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S')
+  # Starting date/time of the clip (in local time; reading from MP4 metadata):
+  DATE=$(date -d $( $FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S')
   #Starting date (YYY-MM-DD):
   DATE1=`echo $DATE |cut -d" " -f1`
   #Starting time (hrs:min):
