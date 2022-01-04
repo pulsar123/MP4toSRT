@@ -40,7 +40,7 @@ if which ffprobe.exe &>/dev/null
   then
   FFPROBE=ffprobe
   else
-  echo "ffprobe command is not on your PATH; exiting..."
+  echo "** ffprobe command is not on your PATH; exiting..."
   exit 1
   fi
 
@@ -101,7 +101,7 @@ for file in $*
   echo "Processing $file"
   if ! $FFPROBE $file &>/dev/null
     then
-    echo "File $file does not seem to be a video file; exiting..."
+    echo "** File $file does not seem to be a video file; exiting..."
     exit 1
     fi
   dt=0
@@ -111,8 +111,18 @@ for file in $*
   #  N_FRAMES=$($FFPROBE -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $file| grep nb_frames | cut -d= -f2)
   # Or you can use MediaInfo CLI program:
   #  N_FRAMES=$(/cygdrive/c/Program\ Files/MediaInfo_CLI/MediaInfo.exe --Output="Video;%FrameCount%" $file)
+  if test -z "$N_FRAMES"
+     then
+	 echo "** File $file does not provide the number of frames; exiting"
+	 exit 1
+	 fi
   # Starting date/time of the clip (in local time; reading from MP4 metadata):
-  DATE=$(date -d $( $FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S')
+  DATE=$(date -d $( $FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S' &>/dev/null)
+  if test $? -ne 0
+     then
+	 echo "** File $file does not provide the creation_date tag; exiting"
+	 exit 1
+	 fi
   #Starting date (YYY-MM-DD):
   DATE1=`echo $DATE |cut -d" " -f1`
   #Starting time (hrs:min):
