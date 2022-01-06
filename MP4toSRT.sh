@@ -118,7 +118,6 @@ for file in $*
 	 fi
   # Starting date/time of the clip (in local time; reading from MP4 metadata):
   DATE=$(date -d $( $FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S')
-date -d $( $FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep creation_time | cut -d= -f2) +'%Y-%m-%d %H:%M:%S'
   if test $? -ne 0
      then
 	 echo "** File $file does not provide the creation_date tag; exiting"
