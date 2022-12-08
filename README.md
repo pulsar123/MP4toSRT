@@ -12,7 +12,7 @@ $ MP4toSRT.sh *.MP4
 
 If you have a mixture of clips produced by different cameras, you can enforce any ordering of the clips by saving the names of the clips in a file (one name per line) in the desired order, and then running my script as follows:
 
-$ MP4toSRT.sh `cat list.txt`
+$ MP4toSRT.sh \`cat list.txt\`
 
 It is pretty fast (one minute to process 100 4K clips under WSL). This will produce a single SRT file for the whole sequence of the clips - merged.srt .
 
