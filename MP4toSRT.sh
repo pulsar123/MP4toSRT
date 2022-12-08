@@ -1,10 +1,16 @@
 #!/bin/bash
 
-# Script to convert one or multiple *.MP4 files created by Canon G50 camcorder to srt file
+# Script to convert one or multiple *.MP4 files to srt file
 # containing date/time subtitles for each minute of the merged video.
 
-# The merged SRT file can be loaded into Kdenlive video editor, along with all the video clips, 
+# The script was initially designed to work with Canon G50 camcorder clips but now should work
+# with any combination of mp4 video files - as long as the files have a "duration" MP4 tag.
+# The clips can have different frame rates, codecs etc.
+
+# The merged SRT file can be imported into Kdenlive video editor, along with all the video clips, 
 # for joint editing/exporting.
+
+# Live demo of the script + Kdenlive: https://youtu.be/pnSd9zTQcPE
 
 # Program ffprobe should be on your $PATH . E.g. it comes with kdenlive, and under Windows (cygwin) you can
 # add the following to your .bashrc file:
@@ -14,9 +20,6 @@
 #  export PATH=/mnt/c/Program\ Files/kdenlive/bin:$PATH
 
 # The script is also using two standard Linux commands (present in cygwin and WSL): date and awk.
-
-# Frame rate:
-FPS=29.97
 
 # Number of seconds bewteen each subtitle change
 L=60
@@ -105,15 +108,11 @@ for file in $*
     exit 1
     fi
   dt=0
-  # Number of frames in the clip (reading metadata value with ffprobe):
-  N_FRAMES=$($FFPROBE -loglevel 0  -show_streams -select_streams v:0 $file | grep nb_frames | cut -d= -f2)
-  # If the metadata number of frames is missing, you can use this method (much slower):
-  #  N_FRAMES=$($FFPROBE -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $file| grep nb_frames | cut -d= -f2)
-  # Or you can use MediaInfo CLI program:
-  #  N_FRAMES=$(/cygdrive/c/Program\ Files/MediaInfo_CLI/MediaInfo.exe --Output="Video;%FrameCount%" $file)
-  if test -z "$N_FRAMES"
+  # Duration of the clip in seconds (reading metadata value with ffprobe):
+  DURATION=$($FFPROBE  -loglevel 0  -show_streams -select_streams v:0 $file | grep duration= | cut -d= -f2)
+  if test -z "$DURATION"
      then
-	 echo "** File $file does not provide the number of frames; exiting"
+	 echo "** File $file does not provide the clip duration; exiting"
 	 exit 1
 	 fi
   # Starting date/time of the clip (in local time; reading from MP4 metadata):
@@ -132,7 +131,7 @@ for file in $*
   # Time left until the next minute change (seconds):
   LEFT=$(($L - 10#$SEC))
   # Time in seconds for the end of the current clip (counting from the beginning of the first clip):
-  t_end=$(echo $t1 $N_FRAMES | awk -v FPS=$FPS '{printf "%.6f", $1+$2/FPS}')
+  t_end=$(echo $t1 $DURATION | awk '{printf "%.6f", $1+$2}')  
   t2=$(echo $t1 $LEFT | awk '{printf "%.6f", $1+$2}')
   LEFT=$L
   # The loop to generate a subtitle every minute inside the current clip:
